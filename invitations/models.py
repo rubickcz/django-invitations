@@ -24,6 +24,7 @@ class Invitation(AbstractBaseInvitation):
                               max_length=app_settings.EMAIL_MAX_LENGTH)
     created = models.DateTimeField(verbose_name=_('created'),
                                    default=timezone.now)
+    email_template = 'invitations/email/email_invite'
 
     @classmethod
     def create(cls, email, inviter=None, **kwargs):
@@ -41,11 +42,18 @@ class Invitation(AbstractBaseInvitation):
                 days=app_settings.INVITATION_EXPIRY))
         return expiration_date <= timezone.now()
 
+    def get_email_template(self):
+        return self.email_template
+
+    def get_invite_url(self, request):
+        return reverse('invitations:accept-invite', args=[self.key])
+
+    def get_absolute_invite_url(self, request):
+        return request.build_absolute_uri(self.get_invite_url(request))
+
     def send_invitation(self, request, **kwargs):
         current_site = kwargs.pop('site', Site.objects.get_current())
-        invite_url = reverse('invitations:accept-invite',
-                             args=[self.key])
-        invite_url = request.build_absolute_uri(invite_url)
+        invite_url = self.get_absolute_invite_url(request)
         ctx = kwargs
         ctx.update({
             'invite_url': invite_url,
@@ -55,7 +63,7 @@ class Invitation(AbstractBaseInvitation):
             'inviter': self.inviter,
         })
 
-        email_template = 'invitations/email/email_invite'
+        email_template = self.get_email_template()
 
         get_invitations_adapter().send_mail(
             email_template,
