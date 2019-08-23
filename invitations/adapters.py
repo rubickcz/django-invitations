@@ -4,6 +4,7 @@ from django.contrib.sites.models import Site
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.template import TemplateDoesNotExist
 from django.template.loader import render_to_string
+from django import template
 
 from .app_settings import app_settings
 from .utils import import_attribute
@@ -46,8 +47,8 @@ class BaseInvitationsAdapter(object):
         for ext in ['html', 'txt']:
             try:
                 template_name = '{0}_message.{1}'.format(template_prefix, ext)
-                bodies[ext] = render_to_string(template_name,
-                                               context).strip()
+                t = template.loader.get_template(template_name)
+                bodies[ext] = t.render(context).strip()
             except TemplateDoesNotExist:
                 if ext == 'txt' and not bodies:
                     # We need at least one body
